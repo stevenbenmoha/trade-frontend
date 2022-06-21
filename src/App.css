@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  font-family: Graphik, "Times New Roman", serif !important;
 }
 
 .App-logo {
@@ -13,8 +14,21 @@
   }
 }
 
+ Button {
+  text-transform: none !important;
+  font-family: Graphik, "Times New Roman", serif !important;
+}
+
+.default-font {
+  font-family: Graphik, "Times New Roman", serif !important;
+}
+
+.rounded-border {
+  border-radius: 15px !important;
+}
+
 .App-header {
-  background-color: #586070;
+  background-color: #8c99b9;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

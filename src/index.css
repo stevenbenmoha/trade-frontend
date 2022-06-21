@@ -11,3 +11,8 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+@font-face {
+  font-family: 'Graphik';
+  src: local('Graphik'), url(./assets/fonts/Graphik-Font-Family/GraphikSemibold.otf) format('opentype');
+}
