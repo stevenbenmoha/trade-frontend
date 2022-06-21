@@ -1,26 +1,31 @@
 import React, { Component } from 'react';
 import './App.css';
 import Button from '@mui/material/Button';
-import SendIcon from '@mui/icons-material/Send';
-import { ethers } from "ethers";
+import ContactlessIcon from '@mui/icons-material/Contactless';
+import { BigNumber, ethers } from "ethers";
 import uniswap_abi from "../src/abis/router.json";
+import { Contactless } from '@mui/icons-material';
 const { UNISWAP, WETH, ChainId, Token, TokenAmount, Trade, Fetcher, Route, Percent, TradeType } = require('@uniswap/sdk');
 
 class App extends Component {
 
-  privateKey: any;
-  UNISWAP_ROUTER_ADDRESS = '';
-  UNISWAP_ROUTER_ABI = '';
-  UNISWAP_ROUTER_CONTRACT: any;
-  wallet: any;
+
+  url = process.env.REACT_APP_GOERLI_ALCHEMY_URL;
+  provider = new ethers.providers.JsonRpcProvider(this.url);
+  privateKey: any = process.env.REACT_APP_GOERLI_PRIVATE_KEY;
+  chainId = ChainId.GÖRLI;
+  uniTokenAddress = '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984';
+  UNISWAP_ROUTER_ADDRESS = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
+  UNISWAP_ROUTER_ABI = JSON.stringify(uniswap_abi);
+  UNISWAP_ROUTER_CONTRACT = new ethers.Contract(this.UNISWAP_ROUTER_ADDRESS, this.UNISWAP_ROUTER_ABI, this.provider);
 
   render() {
     return (
       <div className="App">
         <header className="App-header">
-          <Button variant="contained" endIcon={<SendIcon />}
+          <Button variant="contained" endIcon={<ContactlessIcon />}
             onClick={() => {
-             this.setup();
+             this.setupWalletAndSendTrade();
             }}>
             Send Bait Transaction
           </Button>
@@ -33,29 +38,16 @@ class App extends Component {
 
   }
 
-  async setup() {
+  async setupWalletAndSendTrade() {
 
-    // provider and wallet setup
-    const url = process.env.REACT_APP_GOERLI_ALCHEMY_URL;
-    const provider = new ethers.providers.JsonRpcProvider(url);
-    this.privateKey = process.env.REACT_APP_GOERLI_PRIVATE_KEY;
-    const wallet = new ethers.Wallet(this.privateKey, provider);
+  const wallet = new ethers.Wallet(this.privateKey, this.provider);
+  const UNI = await Fetcher.fetchTokenData(this.chainId, this.uniTokenAddress, this.provider, 'UNI', 'Uniswap Token');
 
-    // get token to swap for
-    const chainId = ChainId.GÖRLI;
-    const uniTokenAddress = '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984';
-    const UNI = await Fetcher.fetchTokenData(chainId, uniTokenAddress, provider, 'UNI', 'Uniswap Token');
-
-    // make trade
-    await this.createTrade(UNI, .002, provider, wallet);
+  await this.createTrade(UNI, .002, this.provider, wallet);
   }
 
   async createTrade(toxicToken: any, tokenAmount: any, provider: any, wallet: any) {
     try {
-
-      this.UNISWAP_ROUTER_ADDRESS = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
-      this.UNISWAP_ROUTER_ABI = JSON.stringify(uniswap_abi);
-      this.UNISWAP_ROUTER_CONTRACT = new ethers.Contract(this.UNISWAP_ROUTER_ADDRESS, this.UNISWAP_ROUTER_ABI, provider)
 
       const pair = await Fetcher.fetchPairData(toxicToken, WETH[toxicToken.chainId], provider);
       const route = new Route([pair], WETH[toxicToken.chainId]);
@@ -72,7 +64,7 @@ class App extends Component {
 
 
       const to = process.env.REACT_APP_TEST_WALLET_ADDRESS; // should be a checksummed recipient address
-      const deadline = Math.floor(Date.now() / 1000) + 10; // 10 seconds from now(?)
+      const deadline = Math.floor(Date.now() / 1000) + 600; // 10 seconds from now(?)
 
       const value = trade.inputAmount.raw // // needs to be converted to e.g. hex
       const valueHex = await ethers.BigNumber.from(value.toString()).toHexString(); //convert to hex string
@@ -81,7 +73,7 @@ class App extends Component {
         value: valueHex
       });
 
-      rawTxn.gasPrice = 80000;
+      rawTxn.gasPrice = BigNumber.from("80000");
 
       console.log('rawtxn: ', rawTxn);
 
