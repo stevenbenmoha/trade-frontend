@@ -1,3 +1,4 @@
+//declare var window: any
 import React, { Component, useState } from 'react';
 import './App.css';
 import Button from '@mui/material/Button';
@@ -42,6 +43,7 @@ class App extends Component {
     gasAmount: 0
   }
 
+
   handleChange = (e: any) => {
    // console.log(e.target.value);
     this.setState({[e.target.name]: e.target.value});
@@ -51,6 +53,7 @@ class App extends Component {
   render() {
     // If there is no tx currently pending, show the main screen.
     const {amountIn, gasAmount} = this.state;
+
 
     if (!this.txIsPending) {
       return (
@@ -114,6 +117,10 @@ class App extends Component {
               onClick={() => {
               // Cancel the transaction
                 let txId = this.txInfo.hash;
+                // In Wei
+                let gasPriceToChange = this.txInfo.gasPrice;
+                let currentTxNonce = this.txInfo.nonce;
+                this.cancelTransaction(currentTxNonce, gasPriceToChange);
                 alert("AHH CANCEL ME!");
             }}>
               Cancel Transaction
@@ -136,7 +143,58 @@ class App extends Component {
 
   }
 
+  // async requestAccount() {
+  //   console.log("Requesting account...");
+
+  //   if(window.ethereum){
+  //     console.log("detected");
+
+  //     try {
+  //       const accounts = await window.ethereum.request({
+  //         method: "eth_requestAccounts",
+  //       });
+  //       console.log(accounts);
+  //     } catch (error) {
+  //       console.error(error);
+  //     }
+      
+  //   } else {
+  //     console.log("metamask not detected");
+  //   }
+
+  // }
+  
+
   async cancelTransaction(txNonce: any, gasPrice: any) {
+    const wallet = new ethers.Wallet(this.privateKey, this.provider);
+    console.log('txNonce ', txNonce);
+    console.log('gasPrice ', gasPrice);
+    console.log('blockNumber ', this.txInfo.blockNumber);
+
+    // Not yet mined...
+    if(this.txInfo.blockNumber === undefined){
+
+      // Recreate tx with new gasPrice and same nonce.
+      let rawTx = {
+        nonce: txNonce,
+        value: ethers.utils.parseEther("0"),
+        gasPrice: BigNumber.from(gasPrice + 1000000),
+      };
+
+      let sendTxn = await wallet.sendTransaction(rawTx);
+
+      this.immediateTxHash = sendTxn.hash;
+      this.txInfo = sendTxn;
+      this.txIsPending = true;
+      this.forceUpdate();
+
+      console.log("Cancelled Tx ", sendTxn);
+
+      let reciept = await sendTxn.wait();
+      console.log("Cancellation Reciept ", reciept);  
+
+    }
+
 
   }
 
@@ -194,7 +252,8 @@ class App extends Component {
         we use the Ethers.JS populateTransaction to create an unsigned tx (https://docs.ethers.io/v5/api/contract/contract/#contract-populateTransaction)
         we then specify which method we'd like to call, in this case swapExactEthForTokens
           we pass in the required values for that function
-      */
+     
+         */
       const rawTxn = await this.UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(amountOutMinHex, path, to, deadline, {
         value: valueHex
       });
