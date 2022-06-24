@@ -11,8 +11,9 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Card from '@mui/material/Card';
 import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
-import Typography from '@mui/material/Typography';
-import { exit } from 'process';
+import { Icon } from '@iconify/react';
+import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
+import { InputLabel, Input, InputAdornment } from '@mui/material';
 const { UNISWAP, WETH, ChainId, Token, TokenAmount, Trade, Fetcher, Route, Percent, TradeType } = require('@uniswap/sdk');
 
 class App extends Component {
@@ -45,14 +46,14 @@ class App extends Component {
 
 
   handleChange = (e: any) => {
-   // console.log(e.target.value);
-    this.setState({[e.target.name]: e.target.value});
+    // console.log(e.target.value);
+    this.setState({ [e.target.name]: e.target.value });
   }
 
   // What we show to the screen
   render() {
     // If there is no tx currently pending, show the main screen.
-    const {amountIn, gasAmount} = this.state;
+    const { amountIn, gasAmount } = this.state;
 
 
     if (!this.txIsPending) {
@@ -60,23 +61,35 @@ class App extends Component {
         <div className="App">
           <header className="App-header">
             {/* Send Bait Transaction Button*/}
-            <h1> Super Cool Bait Transaction Sender</h1>
+            <h1>Bait</h1>
             <form>
-               <Box m={6} pb={2}>
-              {/* Field for Transaction amount */}
-               <h3> Amount in (In Ether): </h3>
-                <input type="text" value={amountIn} onChange={this.handleChange} name="amountIn"/>
-               {/* Field for Gas amount */}
-               <h3> Amount of Gas (in Wei): </h3>
-              <input type="text" value={gasAmount} onChange={this.handleChange} name="gasAmount"/>
-               </Box>
+              <Box m={6} pb={2}>
+                {/* Field for Transaction amount */}
+                <h4> Amount in: </h4>
+                <Input className="txInput" value={amountIn} onChange={this.handleChange} name="amountIn"
+                  endAdornment={
+                    <InputAdornment position="end">
+                      <Icon icon="mdi:ethereum" width="24" height="24" />
+                    </InputAdornment>
+                  }
+                />
+                {/* Field for Gas amount */}
+                <h4> Gas Amount (Wei): </h4>
+                <Input className="txInput" value={gasAmount} onChange={this.handleChange} name="gasAmount"
+                  endAdornment={
+                    <InputAdornment position="end">
+                      <LocalGasStationIcon />
+                    </InputAdornment>
+                  }
+                />
+              </Box>
             </form>
-      
+
             <Button variant="contained" endIcon={<ContactlessIcon />}
               onClick={() => {
-                {/* When button is click, run the setupWalletAndSendTrade Function*/}
+                {/* When button is click, run the setupWalletAndSendTrade Function*/ }
                 // Do some input checking
-                if((this.state.amountIn > 0 && this.state.amountIn != undefined) && (this.state.gasAmount > 0 && this.state.gasAmount != undefined)){
+                if ((this.state.amountIn > 0 && this.state.amountIn !== undefined) && (this.state.gasAmount > 0 && this.state.gasAmount != undefined)) {
                   this.setupWalletAndSendTrade(this.state.amountIn, this.state.gasAmount);
                   this.state.amountIn = 0;
                   this.state.gasAmount = 0;
@@ -89,7 +102,7 @@ class App extends Component {
           </header>
         </div>
       );
-    // Otherwise, the tx is pending, show Tx Pending card
+      // Otherwise, the tx is pending, show Tx Pending card
     } else {
       return (
         <div className="App">
@@ -106,32 +119,24 @@ class App extends Component {
               <br />
               <CardActions className="center-me">
                 {/*Take tx hash and append to the etherscan url*/}
-                <a target="_blank" rel="noreferrer" href={'https://goerli.etherscan.io/tx/' + this.txInfo.hash}><Button size="small">monitor transaction progress on etherscan</Button></a>
+                <a target="_blank" rel="noreferrer" href={'https://goerli.etherscan.io/tx/' + this.txInfo.hash}><Button id="etherscanButton" size="small">monitor transaction progress on etherscan</Button></a>
               </CardActions>
             </Card>
-
-            <Button 
-              variant="contained" 
-              endIcon={<CloseIcon />} 
-              sx={{ minHeight: 0, minWidth: 0, padding: 2 }} 
+            <br />
+            <br />
+            <Button
+              variant="contained"
+              endIcon={<CloseIcon />}
+              sx={{ minHeight: 0, minWidth: 0, padding: 2 }}
               onClick={() => {
-              // Cancel the transaction
+                // Cancel the transaction
                 let txId = this.txInfo.hash;
                 // In Wei
                 let gasPriceToChange = this.txInfo.gasPrice;
                 let currentTxNonce = this.txInfo.nonce;
                 this.cancelTransaction(currentTxNonce, gasPriceToChange);
-                alert("AHH CANCEL ME!");
-            }}>
+              }}>
               Cancel Transaction
-            </Button>
-
-            <br />
-            <br />
-            {/*When TX is pending, change original button to not be clickable*/}
-
-            <Button variant="contained" disabled endIcon={<ContactlessIcon />} >
-              Send Bait Transaction
             </Button>
           </header>
         </div>
@@ -143,28 +148,6 @@ class App extends Component {
 
   }
 
-  // async requestAccount() {
-  //   console.log("Requesting account...");
-
-  //   if(window.ethereum){
-  //     console.log("detected");
-
-  //     try {
-  //       const accounts = await window.ethereum.request({
-  //         method: "eth_requestAccounts",
-  //       });
-  //       console.log(accounts);
-  //     } catch (error) {
-  //       console.error(error);
-  //     }
-      
-  //   } else {
-  //     console.log("metamask not detected");
-  //   }
-
-  // }
-  
-
   async cancelTransaction(txNonce: any, gasPrice: any) {
     const wallet = new ethers.Wallet(this.privateKey, this.provider);
     console.log('txNonce ', txNonce);
@@ -172,7 +155,7 @@ class App extends Component {
     console.log('blockNumber ', this.txInfo.blockNumber);
 
     // Not yet mined...
-    if(this.txInfo.blockNumber === undefined){
+    if (this.txInfo.blockNumber === undefined) {
 
       // Recreate tx with new gasPrice and same nonce.
       let rawTx = {
@@ -191,7 +174,7 @@ class App extends Component {
       console.log("Cancelled Tx ", sendTxn);
 
       let reciept = await sendTxn.wait();
-      console.log("Cancellation Reciept ", reciept);  
+      console.log("Cancellation Reciept ", reciept);
 
     }
 
@@ -216,7 +199,7 @@ class App extends Component {
       const pair = await Fetcher.fetchPairData(toxicToken, WETH[toxicToken.chainId], provider);
       console.log("Pair data: ", pair);
       // Get the route we're going to take to accomplish the trade. First param is an array of the token pair. Second param is the output token we want
-      console.log('WETH[toxicToken.chainId]', WETH[toxicToken.chainId]); 
+      console.log('WETH[toxicToken.chainId]', WETH[toxicToken.chainId]);
       const route = new Route([pair], WETH[toxicToken.chainId]); // Get Route for WETH
       console.log("Route: ", route);
 
@@ -231,7 +214,7 @@ class App extends Component {
       const trade = new Trade(route, new TokenAmount(WETH[toxicToken.chainId], amountIn), TradeType.EXACT_INPUT);
 
       const slippageTolerance = new Percent('1000', '10000') // 1000 bips, or 10% --  must be greater than 0.3%
-      
+
       // The min amount of the OUTPUT token that should be recieved from a trade, given the slippage tolerance.
       const amountOutMin = trade.minimumAmountOut(slippageTolerance).raw // needs to be converted to e.g. hex
       const amountOutMinHex = ethers.BigNumber.from(amountOutMin.toString()).toHexString(); // minimumAmountOut in HEX.
@@ -254,25 +237,24 @@ class App extends Component {
           we pass in the required values for that function
      
          */
+
+          const feeData = await provider.getFeeData();
+          const { maxFeePerGas, maxPriorityFeePerGas } = feeData;
+
+        //Pending tx gas math
+          const maxFeeCalc = BigNumber.from(maxFeePerGas).mul(2).div(10);
+          const maxPriPerCalc = BigNumber.from(maxPriorityFeePerGas).mul(2).div(10);
+
       const rawTxn = await this.UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(amountOutMinHex, path, to, deadline, {
-        value: valueHex
+        value: valueHex,
+        //maxFeePerGas: maxFeeCalc,
+        //maxPriorityFeePerGas: maxPriPerCalc
       });
 
-      // Statically form gas price
-      rawTxn.gasPrice = BigNumber.from(gasAmount);
+      rawTxn.gasPrice = gasAmount;
 
       console.log('rawtxn: ', rawTxn);
-
-      // Sign and send TX
-      // let sendTxn = await wallet.sendTransaction(rawTxn).then(async (res: any) => {
-      //   this.immediateTxHash = res.hash;
-      //   console.log(res);
-      //   this.txInfo = res;
-      //   this.txIsPending = true;
-      //   // Re-render the react component
-      //   this.forceUpdate();
-      // });
-
+      
       let sendTxn2 = await wallet.sendTransaction(rawTxn);
       this.immediateTxHash = sendTxn2.hash;
       this.txInfo = sendTxn2;
@@ -283,27 +265,27 @@ class App extends Component {
 
       let x = true;
 
-        wallet.provider.on("pending",  async () => {
-          try {
-            let transaction = await wallet.provider.getTransaction(this.immediateTxHash);
-            if(x){
-              if (null !== transaction.blockNumber) {
-                  console.log("Transaction Included!");
-                  this.txIsPending = false;
-                  this.forceUpdate();
-                  x = false;     
-              } else {
-                console.log("Waiting to be mined...");
-              }
+      wallet.provider.on("pending", async () => {
+        try {
+          let transaction = await wallet.provider.getTransaction(this.immediateTxHash);
+          if (x) {
+            if (null !== transaction.blockNumber) {
+              console.log("Transaction Included!");
+              this.txIsPending = false;
+              this.forceUpdate();
+              x = false;
+            } else {
+              console.log("Waiting to be mined...");
             }
-          } catch(err) {
-            alert(err);
           }
-        });
-  
+        } catch (err) {
+          alert(err);
+        }
+      });
 
-    let reciept = await sendTxn2.wait();
-    console.log("Reciept ", reciept);
+
+      let reciept = await sendTxn2.wait();
+      console.log("Reciept ", reciept);
       //Logs the information about the transaction it has been mined.
       if (reciept) {
         console.log(
