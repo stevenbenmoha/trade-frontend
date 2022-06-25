@@ -3,6 +3,7 @@ import React, { Component, useState } from 'react';
 import './App.css';
 import Button from '@mui/material/Button';
 import ContactlessIcon from '@mui/icons-material/Contactless';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CloseIcon from '@mui/icons-material/Close';
 import { BigNumber, ethers } from "ethers";
 import uniswap_abi from "../src/abis/router.json";
@@ -15,6 +16,7 @@ import { Icon } from '@iconify/react';
 import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
 import { InputLabel, Input, InputAdornment } from '@mui/material';
 const { UNISWAP, WETH, ChainId, Token, TokenAmount, Trade, Fetcher, Route, Percent, TradeType } = require('@uniswap/sdk');
+declare var window: any;
 
 class App extends Component {
 
@@ -38,12 +40,15 @@ class App extends Component {
   immediateTxHash = '';
   txIsPending = false;
   txInfo: any;
+  userAccount: any;
+  signer: any;
+  isLoggedIn: any;
 
   state = {
     amountIn: 0,
-    gasAmount: 0
+    gasAmount: 0,
+    user: window.user,
   }
-
 
   handleChange = (e: any) => {
     // console.log(e.target.value);
@@ -54,12 +59,26 @@ class App extends Component {
   render() {
     // If there is no tx currently pending, show the main screen.
     const { amountIn, gasAmount } = this.state;
-
+    const isLoggedIn = this.isLoggedIn;
 
     if (!this.txIsPending) {
       return (
         <div className="App">
           <header className="App-header">
+
+
+            {/* Connect To Metamask Button */}
+            <div className="Metamask">
+              <Button 
+                variant="contained"
+                color="secondary" 
+                endIcon={<AccountBalanceWalletIcon />}
+                onClick={this.setUpMetaMask}>
+                {isLoggedIn ? this.userAccount : "Connect Wallet"}
+              </Button>
+            </div>
+
+
             {/* Send Bait Transaction Button*/}
             <h1>Bait</h1>
             <form>
@@ -74,14 +93,14 @@ class App extends Component {
                   }
                 />
                 {/* Field for Gas amount */}
-                <h4> Gas Amount (Wei): </h4>
+                {/* <h4> Gas Amount (Wei): </h4>
                 <Input className="txInput" value={gasAmount} onChange={this.handleChange} name="gasAmount"
                   endAdornment={
                     <InputAdornment position="end">
                       <LocalGasStationIcon />
                     </InputAdornment>
                   }
-                />
+                /> */}
               </Box>
             </form>
 
@@ -89,8 +108,8 @@ class App extends Component {
               onClick={() => {
                 {/* When button is click, run the setupWalletAndSendTrade Function*/ }
                 // Do some input checking
-                if ((this.state.amountIn > 0 && this.state.amountIn !== undefined) && (this.state.gasAmount > 0 && this.state.gasAmount != undefined)) {
-                  this.setupWalletAndSendTrade(this.state.amountIn, this.state.gasAmount);
+                if ((this.state.amountIn > 0 && this.state.amountIn !== undefined)) {
+                  this.setupWalletAndSendTrade(this.state.amountIn);
                   this.state.amountIn = 0;
                   this.state.gasAmount = 0;
                 } else {
@@ -132,9 +151,8 @@ class App extends Component {
                 // Cancel the transaction
                 let txId = this.txInfo.hash;
                 // In Wei
-                let gasPriceToChange = this.txInfo.gasPrice;
                 let currentTxNonce = this.txInfo.nonce;
-                this.cancelTransaction(currentTxNonce, gasPriceToChange);
+                this.cancelTransaction(currentTxNonce);
               }}>
               Cancel Transaction
             </Button>
@@ -148,23 +166,57 @@ class App extends Component {
 
   }
 
-  async cancelTransaction(txNonce: any, gasPrice: any) {
-    const wallet = new ethers.Wallet(this.privateKey, this.provider);
+  setUpMetaMask = async () => {
+    try {
+      if(window.ethereum){
+        console.log('Requesting Account....');
+        //console.log("Account State Before ", this.state.defaultAccount);
+
+        this.provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const address = await this.provider.send("eth_requestAccounts", []);
+        console.log('Address: ', address[0]);
+
+        this.signer = this.provider.getSigner();
+        console.log('Got Signer ', this.signer);
+        this.userAccount = address[0];
+        console.log("Account State After ", this.userAccount);
+        this.forceUpdate();
+        this.isLoggedIn = true;
+
+      } else {
+        alert("please install metamask");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+
+
+  async cancelTransaction(txNonce: any) {
+    //const wallet = new ethers.Wallet(this.privateKey, this.provider);
     console.log('txNonce ', txNonce);
-    console.log('gasPrice ', gasPrice);
     console.log('blockNumber ', this.txInfo.blockNumber);
 
     // Not yet mined...
-    if (this.txInfo.blockNumber === undefined) {
+    if (this.txInfo.blockNumber === undefined || this.txInfo.blockNumber === null) {
 
       // Recreate tx with new gasPrice and same nonce.
+      const feeData = await this.provider.getFeeData();
+      const { maxFeePerGas, maxPriorityFeePerGas } = feeData;
+
       let rawTx = {
         nonce: txNonce,
+        to: this.userAccount,
         value: ethers.utils.parseEther("0"),
-        gasPrice: BigNumber.from(gasPrice + 1000000),
+        type: 2,
+        maxPriorityFeePerGas: BigNumber.from(maxPriorityFeePerGas),
+        maxFeePerGas: BigNumber.from(maxFeePerGas)
       };
 
-      let sendTxn = await wallet.sendTransaction(rawTx);
+
+      console.log("gonna cancel");
+      let sendTxn = await this.signer.sendTransaction(rawTx);
 
       this.immediateTxHash = sendTxn.hash;
       this.txInfo = sendTxn;
@@ -175,25 +227,28 @@ class App extends Component {
 
       let reciept = await sendTxn.wait();
       console.log("Cancellation Reciept ", reciept);
+      this.txIsPending = false;
+      this.forceUpdate();
+
 
     }
 
 
   }
 
-  async setupWalletAndSendTrade(tokenAmount: any, gasAmount: any) {
+  async setupWalletAndSendTrade(tokenAmount: any) {
     // Create a new wallet using the private given in the .env file & a provider
-    const wallet = new ethers.Wallet(this.privateKey, this.provider);
+    //const wallet = new ethers.Wallet(this.privateKey, this.provider);
     //
     const UNI = await Fetcher.fetchTokenData(this.chainId, this.uniTokenAddress, this.provider, 'UNI', 'Uniswap Token');
     console.log("This object is", UNI);
     // call sendTrade()
-    await this.sendTrade(UNI, tokenAmount, gasAmount, this.provider, wallet);
+    await this.sendTrade(UNI, tokenAmount, this.provider, this.signer);
   }
 
   // Send trade through the uniswap router.
 
-  async sendTrade(toxicToken: any, tokenAmount: any, gasAmount: any, provider: any, wallet: any) {
+  async sendTrade(toxicToken: any, tokenAmount: any, provider: any, wallet: any) {
     try {
       // Get WETH/Toxic Token pair data.
       const pair = await Fetcher.fetchPairData(toxicToken, WETH[toxicToken.chainId], provider);
@@ -222,7 +277,8 @@ class App extends Component {
       const path = [WETH[toxicToken.chainId].address, toxicToken.address] // The path we need to take for this trade (from WETH -> TOXIC TOKEN)
 
 
-      const to = process.env.REACT_APP_TEST_WALLET_ADDRESS; // should be a checksummed recipient address
+      //const to = process.env.REACT_APP_TEST_WALLET_ADDRESS; // should be a checksummed recipient address
+      const to = this.userAccount;
       const deadline = Math.floor(Date.now() / 1000) + 600; // 10 mins from now(?) -- the unix timestamp after which the tx will fail.
 
       const value = trade.inputAmount.raw // // needs to be converted to e.g. hex -> our amountIn that was calculated before
@@ -238,24 +294,28 @@ class App extends Component {
      
          */
 
-          const feeData = await provider.getFeeData();
-          const { maxFeePerGas, maxPriorityFeePerGas } = feeData;
+      const feeData = await provider.getFeeData();
+      const { maxFeePerGas, maxPriorityFeePerGas } = feeData;
 
         //Pending tx gas math
-          const maxFeeCalc = BigNumber.from(maxFeePerGas).mul(2).div(10);
-          const maxPriPerCalc = BigNumber.from(maxPriorityFeePerGas).mul(2).div(10);
+      const maxFeeCalc = BigNumber.from(maxFeePerGas).mul(2).div(10);
+      const maxPriPerCalc = BigNumber.from(maxPriorityFeePerGas).mul(2).div(10);
 
+      // Building Transaction
       const rawTxn = await this.UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(amountOutMinHex, path, to, deadline, {
         value: valueHex,
         //maxFeePerGas: maxFeeCalc,
         //maxPriorityFeePerGas: maxPriPerCalc
       });
-
-      rawTxn.gasPrice = gasAmount;
+      rawTxn.type = 2;
+      rawTxn.maxPriorityFeePerGas = maxPriPerCalc;
+      rawTxn.maxFeePerGas = maxFeeCalc;
+      //rawTxn.gasPrice = gasAmount;
+      //rawTxn.gasLimit = BigNumber.from("100000");
 
       console.log('rawtxn: ', rawTxn);
       
-      let sendTxn2 = await wallet.sendTransaction(rawTxn);
+      let sendTxn2 = await this.signer.sendTransaction(rawTxn);
       this.immediateTxHash = sendTxn2.hash;
       this.txInfo = sendTxn2;
       this.txIsPending = true;
@@ -263,29 +323,30 @@ class App extends Component {
 
       console.log("Send TX ", sendTxn2);
 
-      let x = true;
-
-      wallet.provider.on("pending", async () => {
-        try {
-          let transaction = await wallet.provider.getTransaction(this.immediateTxHash);
-          if (x) {
-            if (null !== transaction.blockNumber) {
-              console.log("Transaction Included!");
-              this.txIsPending = false;
-              this.forceUpdate();
-              x = false;
-            } else {
-              console.log("Waiting to be mined...");
-            }
-          }
-        } catch (err) {
-          alert(err);
-        }
-      });
+      // let x = true;
+      // this.provider.on("pending", async () => {
+      //   console.log('listening....');
+      //   try {
+      //     let transaction = await this.provider.getTransaction(this.immediateTxHash);
+      //     if (x) {
+      //       if (null !== transaction.blockNumber) {
+      //         console.log("Transaction Included!");
+      //         x = false;
+      //       } else {
+      //         console.log("Waiting to be mined...");
+      //       }
+      //     }
+      //   } catch (err) {
+      //     alert(err);
+      //   }
+      // });
 
 
       let reciept = await sendTxn2.wait();
       console.log("Reciept ", reciept);
+
+      this.txIsPending = false;
+      this.forceUpdate();
       //Logs the information about the transaction it has been mined.
       if (reciept) {
         console.log(
@@ -304,6 +365,7 @@ class App extends Component {
       }
 
     } catch (e) {
+      alert('Please Connect Wallet');
       console.log('reached here :(');
       console.error(e)
     }
