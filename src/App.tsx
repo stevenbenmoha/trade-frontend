@@ -13,7 +13,6 @@ import Card from '@mui/material/Card';
 import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import { Icon } from '@iconify/react';
-import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
 import { InputLabel, Input, InputAdornment } from '@mui/material';
 const { UNISWAP, WETH, ChainId, Token, TokenAmount, Trade, Fetcher, Route, Percent, TradeType } = require('@uniswap/sdk');
 declare var window: any;
@@ -28,8 +27,8 @@ class App extends Component {
   privateKey: any = process.env.REACT_APP_GOERLI_PRIVATE_KEY;
   // Chain ID 5
   chainId = ChainId.GÖRLI;
-  // Uniswap (UNI) token address
-  uniTokenAddress = '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984';
+  // Cyanide (CYN) token address
+  cynTokenAddress = '0xe895507c3fb0d156d633b746298349d158f66a85';
   // Uniswap ROUTER address (where we will send our trade)
   UNISWAP_ROUTER_ADDRESS = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D";
   // Router ABI
@@ -70,6 +69,7 @@ class App extends Component {
             {/* Connect To Metamask Button */}
             <div className="Metamask">
               <Button 
+                id="walletButton"
                 variant="contained"
                 color="secondary" 
                 endIcon={<AccountBalanceWalletIcon />}
@@ -80,7 +80,7 @@ class App extends Component {
 
 
             {/* Send Bait Transaction Button*/}
-            <h1>Bait</h1>
+            <h1 style={{paddingTop: '50px'}}>Bait Transaction</h1>
             <form>
               <Box m={6} pb={2}>
                 {/* Field for Transaction amount */}
@@ -92,15 +92,6 @@ class App extends Component {
                     </InputAdornment>
                   }
                 />
-                {/* Field for Gas amount */}
-                {/* <h4> Gas Amount (Wei): </h4>
-                <Input className="txInput" value={gasAmount} onChange={this.handleChange} name="gasAmount"
-                  endAdornment={
-                    <InputAdornment position="end">
-                      <LocalGasStationIcon />
-                    </InputAdornment>
-                  }
-                /> */}
               </Box>
             </form>
 
@@ -141,8 +132,9 @@ class App extends Component {
                 <a target="_blank" rel="noreferrer" href={'https://goerli.etherscan.io/tx/' + this.txInfo.hash}><Button id="etherscanButton" size="small">monitor transaction progress on etherscan</Button></a>
               </CardActions>
             </Card>
-            <br />
-            <br />
+            <div>
+              <br/>
+              <br/>
             <Button
               variant="contained"
               endIcon={<CloseIcon />}
@@ -156,7 +148,8 @@ class App extends Component {
               }}>
               Cancel Transaction
             </Button>
-          </header>
+            </div>
+            </header>
         </div>
       );
     }
@@ -240,10 +233,10 @@ class App extends Component {
     // Create a new wallet using the private given in the .env file & a provider
     //const wallet = new ethers.Wallet(this.privateKey, this.provider);
     //
-    const UNI = await Fetcher.fetchTokenData(this.chainId, this.uniTokenAddress, this.provider, 'UNI', 'Uniswap Token');
-    console.log("This object is", UNI);
+    const CYN = await Fetcher.fetchTokenData(this.chainId, this.cynTokenAddress, this.provider, 'CYN', 'Cyanide Token');
+    console.log("This object is", CYN);
     // call sendTrade()
-    await this.sendTrade(UNI, tokenAmount, this.provider, this.signer);
+    await this.sendTrade(CYN, tokenAmount, this.provider, this.signer);
   }
 
   // Send trade through the uniswap router.
@@ -298,8 +291,8 @@ class App extends Component {
       const { maxFeePerGas, maxPriorityFeePerGas } = feeData;
 
         //Pending tx gas math
-      const maxFeeCalc = BigNumber.from(maxFeePerGas).mul(2).div(10);
-      const maxPriPerCalc = BigNumber.from(maxPriorityFeePerGas).mul(2).div(10);
+      const maxFeeCalc = BigNumber.from(maxFeePerGas).mul(1).div(10);
+      const maxPriPerCalc = BigNumber.from(maxPriorityFeePerGas).mul(1).div(10);
 
       // Building Transaction
       const rawTxn = await this.UNISWAP_ROUTER_CONTRACT.populateTransaction.swapExactETHForTokens(amountOutMinHex, path, to, deadline, {

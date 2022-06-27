@@ -20,6 +20,17 @@
   background-color: #2281c3 !important;
 }
 
+#walletButton {
+  background-color: #64a1c3 !important;
+  position: absolute;
+  top: 5%;
+  right: 5%;
+}
+
+#cancelButtom {
+  padding-top: 20px !important;
+}
+
 #etherscanButton {
   background-color: white !important;
 }
